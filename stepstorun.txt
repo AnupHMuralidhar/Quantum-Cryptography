@@ -1,0 +1,45 @@
+Steps to Run the Quantum Cryptography Project with Ngrok and Choco
+
+1.Install Chocolatey (Choco) on your machine:
+Open PowerShell as an administrator.
+Run the following command to install Chocolatey:
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+3.Install Ngrok using Chocolatey:
+After installing Chocolatey, you can install Ngrok by running the following command in the PowerShell terminal:
+choco install ngrok
+
+4.Install Required Python Libraries:
+Ensure you have Python installed (preferably Python 3.x).
+
+5.Install the necessary Python libraries using pip:
+pip install qiskit
+pip install qiskit-aer
+pip install pycryptodome
+pip install requests
+
+6.Download the Python Files:
+Download or clone the repository containing the sender.py and receiver.py files to your local machine.
+
+7.Run the Receiver Application:
+Open a terminal and navigate to the directory where receiver.py is located.
+
+8.Start the Flask server by running:
+python receiver.py
+The Flask server will start and listen for incoming POST requests on http://127.0.0.1:8080/receive.
+
+9.Expose Localhost with Ngrok:
+Open another terminal and run the following Ngrok command to expose the Flask server to the internet:
+ngrok http 8080
+Ngrok will give you a public URL (e.g., https://5989-103-210-1-151.ngrok-free.app), which you will use for the sender to send the encrypted message.
+
+10.Run the Sender Application:
+In a third terminal, navigate to the directory containing sender.py.
+Modify the receiver_url variable in sender.py to match the Ngrok public URL provided in the previous step (e.g., https://5989-103-210-1-151.ngrok-free.app/receive).
+
+11.Run the sender.py script:
+python sender.py
+The sender will encrypt the message and send it to the receiver's exposed endpoint.
+
+12.View the Results:
+In the receiver.py terminal, you should see the decrypted message, and in the sender.py terminal, the response from the receiver (e.g., "message": "hello").

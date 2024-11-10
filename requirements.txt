@@ -1,0 +1,10 @@
+qiskit
+qiskit_aer
+pycryptodome
+requests
+flask
+pip install qiskit
+pip install qiskit-aer
+pip install pycryptodome
+pip install requests
+pip install flask
