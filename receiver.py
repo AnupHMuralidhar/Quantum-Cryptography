@@ -1,18 +1,25 @@
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
 from flask import Flask, request, jsonify
+import base64
+from bb84 import bb84_key_exchange
 
 app = Flask(__name__)
 
 def decrypt_data(encrypted_data, key):
     try:
-        # Ensure that encrypted_data is in bytes and not a dictionary
-        ciphertext = encrypted_data['ciphertext']
-        cipher = AES.new(key, AES.MODE_ECB)  # Using ECB mode
-        decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
-        return decrypted.decode('utf-8')
+        # Decode from base64 and separate nonce, tag, ciphertext
+        encrypted_data = base64.b64decode(encrypted_data)
+        nonce, tag, ciphertext = encrypted_data[:16], encrypted_data[16:32], encrypted_data[32:]
+
+        # Initialize AES decryption with nonce
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+        print("Decrypting with key:", key.hex())  # Print the shared key in hex format for verification
+        decrypted_text = cipher.decrypt_and_verify(ciphertext, tag)
+        print("Decryption successful! Message:", decrypted_text.decode('utf-8'))  # Print decrypted message
+        return decrypted_text.decode('utf-8')
+
     except ValueError as e:
-        return f"Padding Error: {str(e)}"
+        return f"Decryption Error: {str(e)}"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -20,20 +27,19 @@ def decrypt_data(encrypted_data, key):
 def receive_data():
     try:
         data = request.get_json()
-        print("Received data:", data)  # Debugging line to check the incoming data
+        ciphertext = data.get('ciphertext')
 
-        # Convert hex value back to bytes
-        ciphertext = bytes.fromhex(data['ciphertext'])
+        # Generate shared key using BB84
+        shared_key = bb84_key_exchange()
+        print("Receiver Shared Key:", shared_key.hex())  # Print the shared key in hex format for verification
 
-        # Use the same key as the sender
-        shared_key = b'Sixteen byte key'  # Ensure it matches the sender's key
+        # Ensure key length is 16 bytes for AES
+        if len(shared_key) != 16:
+            shared_key = shared_key[:16]
 
-        # Decrypt the data
-        decrypted_message = decrypt_data({'ciphertext': ciphertext}, shared_key)
-
-        # Log the decrypted message for debugging
-        print("Decrypted message:", decrypted_message)
-
+        # Decrypt using AES-GCM
+        print("Decrypting...")
+        decrypted_message = decrypt_data(ciphertext, shared_key)
         if "Error" in decrypted_message:
             return jsonify({"error": decrypted_message}), 500
 
