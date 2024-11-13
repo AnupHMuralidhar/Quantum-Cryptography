@@ -1,46 +1,39 @@
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
+from Crypto.Random import get_random_bytes
+import base64
 import requests
+from bb84 import bb84_key_exchange
 
 class QuantumAES:
     def __init__(self, key):
-        self.key = self.pad_key(key)
-
-    def pad_key(self, key):
-        """Pad or truncate the key to ensure it's 128 bits (16 bytes)"""
-        key = key[:16]  # Truncate if longer than 16 bytes
-        key = key.ljust(16, '0')  # Pad with zeros if shorter than 16 bytes
-        return key.encode()  # Ensure the key is in bytes format
+        self.key = key
 
     def encrypt_text(self, plain_text):
-        """Encrypt the plain text with AES using ECB mode"""
-        cipher = AES.new(self.key, AES.MODE_ECB)  # Using ECB mode
-        padded_text = pad(plain_text.encode(), AES.block_size)  # Pad text to block size
-        ciphertext = cipher.encrypt(padded_text)
-        return ciphertext
+        cipher = AES.new(self.key, AES.MODE_GCM)
+        nonce = cipher.nonce
+        ciphertext, tag = cipher.encrypt_and_digest(plain_text.encode('utf-8'))
+        
+        # Concatenate nonce, tag, and ciphertext, then encode in base64 for transmission
+        encrypted_data = base64.b64encode(nonce + tag + ciphertext).decode('utf-8')
+        return encrypted_data
 
-# Example to use the QuantumAES class
-quantum_key = 'Sixteen byte key'  # Ensure this key matches on both ends
-aes = QuantumAES(quantum_key)
+# Generate the shared key via BB84 protocol
+shared_key = bb84_key_exchange()
+print("Sender Shared Key:", shared_key.hex())  # Print the shared key in hex format
 
-# Sample text to encrypt
-text_to_encrypt = "This is a Longer Message"
-print(f"Encrypting the text message: {text_to_encrypt}")
+# Ensure key length is 16 bytes for AES
+if len(shared_key) != 16:
+    shared_key = shared_key[:16]
 
-# Encrypt the text message
-ciphertext = aes.encrypt_text(text_to_encrypt)
+# Create the AES object with the shared key
+aes = QuantumAES(shared_key)
 
-# Show the ciphertext in hexadecimal format
-print(f"Ciphertext (hex): {ciphertext.hex()}")
+# Encrypt the message
+text_to_encrypt = "This is a test message with AES and BB84"
+encrypted_text = aes.encrypt_text(text_to_encrypt)
+print("Encrypted text:", encrypted_text)
 
-# Send encrypted data via POST
-receiver_url = "https://URLFROMNGROK/receive"
-message = {
-    "ciphertext": ciphertext.hex(),  # Send as hex to avoid transmission issues
-}
-
-# Sending request to the receiver
-response = requests.post(receiver_url, json=message)
-
-# Output the response from the receiver
+# Send encrypted data to receiver
+receiver_url = "NGROKURL/receive"  
+response = requests.post(receiver_url, json={"ciphertext": encrypted_text})
 print("Response from Receiver:", response.text)
