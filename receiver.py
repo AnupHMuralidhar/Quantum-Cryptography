@@ -1,22 +1,21 @@
-from Crypto.Cipher import AES
 from flask import Flask, request, jsonify
 import base64
 from bb84 import bb84_key_exchange
+from custom_aes import encrypt, decrypt
 
 app = Flask(__name__)
 
 def decrypt_data(encrypted_data, key):
     try:
-        # Decode from base64 and separate nonce, tag, ciphertext
+        # Decode from Base64
         encrypted_data = base64.b64decode(encrypted_data)
-        nonce, tag, ciphertext = encrypted_data[:16], encrypted_data[16:32], encrypted_data[32:]
 
-        # Initialize AES decryption with nonce
-        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
-        print("Decrypting with key:", key.hex())  # Print the shared key in hex format for verification
-        decrypted_text = cipher.decrypt_and_verify(ciphertext, tag)
-        print("Decryption successful! Message:", decrypted_text.decode('utf-8'))  # Print decrypted message
-        return decrypted_text.decode('utf-8')
+        # Use custom AES decryption
+        aes = decrypt(encrypted_data,key)
+        decrypted_text = decrypt(encrypted_data,key)
+
+        print("Decryption successful! Message:", decrypted_text)
+        return decrypted_text
 
     except ValueError as e:
         return f"Decryption Error: {str(e)}"
@@ -37,7 +36,7 @@ def receive_data():
         if len(shared_key) != 16:
             shared_key = shared_key[:16]
 
-        # Decrypt using AES-GCM
+        # Decrypt using custom AES
         print("Decrypting...")
         decrypted_message = decrypt_data(ciphertext, shared_key)
         if "Error" in decrypted_message:
